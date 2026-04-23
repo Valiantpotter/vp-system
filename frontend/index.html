@@ -1,0 +1,285 @@
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>VP Task App</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f2f4f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .container {
+            max-width: 420px;
+            margin: auto;
+            padding: 15px;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 4px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .completed {
+            text-decoration: line-through;
+            color: gray;
+            opacity: 0.6;
+        }
+
+        .filters {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="header">VP TASK APP</div>
+
+<div class="container">
+
+<div class="card">
+
+<div class="topbar">
+    <h3>Tasks</h3>
+    <button onclick="logout()">Logout</button>
+</div>
+
+</div>
+
+<div class="card">
+<h3>Login</h3>
+<input id="email" placeholder="email">
+<input id="password" type="password" placeholder="password">
+<button onclick="login()">Login</button>
+</div>
+
+<div class="card">
+<h3>Create Task</h3>
+<input id="taskTitle" placeholder="task title" onkeyup="checkInput()">
+<button id="addBtn" onclick="createTask()" disabled>Add Task</button>
+</div>
+
+<div class="card filters">
+<button onclick="setFilter('all')">All</button>
+<button onclick="setFilter('active')">Active</button>
+<button onclick="setFilter('completed')">Completed</button>
+</div>
+
+<div class="card">
+<h3>Your Tasks</h3>
+<ul id="taskList"></ul>
+</div>
+
+</div>
+
+<script>
+let token = localStorage.getItem("token") || "";
+let currentFilter = "all";
+
+if (token) {
+    getTasks();
+}
+
+/* LOGIN */
+async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const res = await fetch("http://127.0.0.1:3000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        alert(data.error || "Login failed");
+        return;
+    }
+
+    token = data.token;
+    localStorage.setItem("token", token);
+
+    getTasks();
+}
+
+/* LOGOUT */
+function logout() {
+    token = "";
+    localStorage.removeItem("token");
+    document.getElementById("taskList").innerHTML = "";
+}
+
+/* CREATE TASK */
+async function createTask() {
+    const input = document.getElementById("taskTitle");
+    const title = input.value.trim();
+
+    if (!title) return;
+
+    await fetch("http://127.0.0.1:3000/tasks", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ title })
+    });
+
+    input.value = "";
+    checkInput();
+    getTasks();
+}
+
+/* INPUT CHECK */
+function checkInput() {
+    const val = document.getElementById("taskTitle").value;
+    document.getElementById("addBtn").disabled = val.trim() === "";
+}
+
+/* FILTER */
+function setFilter(filter) {
+    currentFilter = filter;
+    getTasks();
+}
+
+/* GET TASKS */
+async function getTasks() {
+    const list = document.getElementById("taskList");
+    list.innerHTML = "Loading...";
+
+    const res = await fetch("http://127.0.0.1:3000/tasks", {
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    const tasks = await res.json();
+
+    list.innerHTML = "";
+
+    let filtered = tasks;
+
+    if (currentFilter === "active") {
+        filtered = tasks.filter(t => t.status !== "completed");
+    }
+
+    if (currentFilter === "completed") {
+        filtered = tasks.filter(t => t.status === "completed");
+    }
+
+    filtered.forEach(task => {
+        const li = document.createElement("li");
+
+        li.innerHTML = `
+            <div class="task">
+                <span class="${task.status === "completed" ? "completed" : ""}">
+                    ${task.title}
+                </span>
+
+                <div>
+                    <button onclick="completeTask('${task._id}')">✔</button>
+                    <button onclick="deleteTask('${task._id}')">❌</button>
+                    <button onclick="editTask('${task._id}', '${task.title}')">✏</button>
+                </div>
+            </div>
+        `;
+
+        list.appendChild(li);
+    });
+}
+
+/* COMPLETE */
+async function completeTask(id) {
+    await fetch(`http://127.0.0.1:3000/tasks/${id}`, {
+        method: "PUT",
+        headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: "completed" })
+    });
+
+    getTasks();
+}
+
+/* DELETE */
+async function deleteTask(id) {
+    await fetch(`http://127.0.0.1:3000/tasks/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    getTasks();
+}
+
+/* EDIT */
+async function editTask(id, oldTitle) {
+    const newTitle = prompt("Edit task:", oldTitle);
+    if (!newTitle) return;
+
+    await fetch(`http://127.0.0.1:3000/tasks/${id}`, {
+        method: "PUT",
+        headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ title: newTitle })
+    });
+
+    getTasks();
+}
+</script>
+
+</body>
+</html>
