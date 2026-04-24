@@ -95,11 +95,32 @@ const task = {
 /* ---------------- UPDATE TASK (TITLE ONLY - LOCKED) ---------------- */
 exports.updateTask = async (req, res) => {
     try {
-        console.log("🟢 UPDATE CALLED");
-        console.log("🟢 UPDATE HIT", req.params.id, req.body);
-        console.log("BODY:", req.body);
+        console.log("UPDATE BODY:", req.body);
 
-        return res.json({ ok: true });
+        const db = global.db;
+        const { ObjectId } = require("mongodb");
+
+        const collection = db.collection("tasks");
+        const id = req.params.id;
+
+        const updateData = {};
+
+        if (req.body.title) {
+            updateData.title = req.body.title;
+        }
+
+        // DO NOT TOUCH STATUS HERE
+        updateData.updatedAt = new Date();
+
+        const result = await collection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: updateData }
+        );
+
+        res.json({
+            message: "Task updated",
+            result
+        });
 
     } catch (err) {
         res.status(500).json({ error: err.message });
