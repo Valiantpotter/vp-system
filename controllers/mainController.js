@@ -267,6 +267,12 @@ exports.login = async (req, res) => {
 /* ---------------- RESET TASK ---------------- */
 exports.resetTasks = async (req, res) => {
     try {
+        const db = global.db; // IMPORTANT FIX
+
+        if (!db) {
+            return res.status(500).json({ error: "DB not ready" });
+        }
+
         const collection = db.collection("tasks");
 
         await collection.updateMany(
