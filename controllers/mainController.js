@@ -91,45 +91,23 @@ const task = {
     }
 };
 
-/* ---------------- UPDATE TASK ---------------- */
+
+/* ---------------- UPDATE TASK (TITLE ONLY - LOCKED) ---------------- */
 exports.updateTask = async (req, res) => {
     try {
-console.log(">>> UPDATE TASK HIT <<<");
-console.log("UPDATE TASK EXECUTED");
-        const collection = db.collection("tasks");
+        console.log("🟢 UPDATE CALLED");
+        console.log("🟢 UPDATE HIT", req.params.id, req.body);
+        console.log("BODY:", req.body);
 
-        const id = req.params.id;
-
-        const result = await collection.updateOne(
-            { _id: new ObjectId(id) },
-            {
-                $set: {
-                    status: "completed",
-                    updatedAt: new Date()
-                }
-            }
-        );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ error: "Task not found" });
-        }
-
-        res.json({
-            message: "updated",
-            matched: result.matchedCount,
-            modified: result.modifiedCount
-        });
+        return res.json({ ok: true });
 
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 };
-
-
 /* ---------------- DELETE TASK ---------------- */
 exports.deleteTask = async (req, res) => {
     try {
-        await connectDB();
         const collection = db.collection("tasks");
 
         const id = req.params.id;
@@ -143,8 +121,7 @@ exports.deleteTask = async (req, res) => {
         }
 
         res.json({
-            message: "Task deleted successfully",
-            result
+            message: "Task deleted successfully"
         });
 
     } catch (err) {
@@ -155,23 +132,21 @@ exports.deleteTask = async (req, res) => {
 /* ---------------- TOGGLE TASK ---------------- */
 exports.toggleTask = async (req, res) => {
     try {
-        await connectDB();
+console.log("🔵 TOGGLE HIT", req.params.id);
         const collection = db.collection("tasks");
+        const { ObjectId } = require("mongodb");
 
         const id = req.params.id;
 
-        const task = await collection.findOne({
-            _id: new ObjectId(id)
-        });
+        const task = await collection.findOne({ _id: new ObjectId(id) });
 
         if (!task) {
             return res.status(404).json({ error: "Task not found" });
         }
 
-        const newStatus =
-            task.status === "pending" ? "completed" : "pending";
+        const newStatus = task.status === "pending" ? "completed" : "pending";
 
-        const result = await collection.updateOne(
+        await collection.updateOne(
             { _id: new ObjectId(id) },
             {
                 $set: {
@@ -182,7 +157,7 @@ exports.toggleTask = async (req, res) => {
         );
 
         res.json({
-            message: "Task toggled",
+            message: "toggled",
             status: newStatus
         });
 
@@ -190,7 +165,6 @@ exports.toggleTask = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
-
 /* ---------------- STATS ---------------- */
 exports.getStats = async (req, res) => {
     try {
@@ -288,5 +262,21 @@ exports.login = async (req, res) => {
 
     } catch (err) {
         return res.status(500).json({ error: err.message });
+    }
+};
+/* ---------------- RESET TASK ---------------- */
+exports.resetTasks = async (req, res) => {
+    try {
+        const collection = db.collection("tasks");
+
+        await collection.updateMany(
+            {},
+            { $set: { status: "pending" } }
+        );
+
+        res.json({ message: "All tasks reset to pending" });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 };

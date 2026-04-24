@@ -88,38 +88,36 @@
 
 <div class="container">
 
-<div class="card">
+    <div class="card">
+        <div class="topbar">
+            <h3>Tasks</h3>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </div>
 
-<div class="topbar">
-    <h3>Tasks</h3>
-    <button onclick="logout()">Logout</button>
-</div>
+    <div class="card">
+        <h3>Login</h3>
+        <input id="email" placeholder="email">
+        <input id="password" type="password" placeholder="password">
+        <button onclick="login()">Login</button>
+    </div>
 
-</div>
+    <div class="card">
+        <h3>Create Task</h3>
+        <input id="taskTitle" placeholder="task title" onkeyup="checkInput()">
+        <button id="addBtn" onclick="createTask()" disabled>Add Task</button>
+    </div>
 
-<div class="card">
-<h3>Login</h3>
-<input id="email" placeholder="email">
-<input id="password" type="password" placeholder="password">
-<button onclick="login()">Login</button>
-</div>
+    <div class="card filters">
+        <button onclick="setFilter('all')">All</button>
+        <button onclick="setFilter('active')">Active</button>
+        <button onclick="setFilter('completed')">Completed</button>
+    </div>
 
-<div class="card">
-<h3>Create Task</h3>
-<input id="taskTitle" placeholder="task title" onkeyup="checkInput()">
-<button id="addBtn" onclick="createTask()" disabled>Add Task</button>
-</div>
-
-<div class="card filters">
-<button onclick="setFilter('all')">All</button>
-<button onclick="setFilter('active')">Active</button>
-<button onclick="setFilter('completed')">Completed</button>
-</div>
-
-<div class="card">
-<h3>Your Tasks</h3>
-<ul id="taskList"></ul>
-</div>
+    <div class="card">
+        <h3>Your Tasks</h3>
+        <ul id="taskList"></ul>
+    </div>
 
 </div>
 
@@ -133,33 +131,45 @@ if (token) {
 
 /* LOGIN */
 async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    try {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
 
-    const res = await fetch("http://127.0.0.1:3000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-    });
+        const res = await fetch("https://vp-system-ru5o.onrender.com/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email, password })
+        });
 
-    const data = await res.json();
+        const data = await res.json();
 
-    if (!res.ok) {
-        alert(data.error || "Login failed");
-        return;
+        if (data.token) {
+            token = data.token;
+            localStorage.setItem("token", token);
+
+            alert("Login successful");
+            getTasks();
+        } else {
+            alert(data.message || data.error || "Login failed");
+        }
+
+    } catch (err) {
+        alert("ERROR: " + err.message);
     }
-
-    token = data.token;
-    localStorage.setItem("token", token);
-
-    getTasks();
 }
 
 /* LOGOUT */
 function logout() {
     token = "";
     localStorage.removeItem("token");
+
     document.getElementById("taskList").innerHTML = "";
+    document.getElementById("email").value = "";
+    document.getElementById("password").value = "";
+
+    alert("Logged out");
 }
 
 /* CREATE TASK */
@@ -169,7 +179,7 @@ async function createTask() {
 
     if (!title) return;
 
-    await fetch("http://127.0.0.1:3000/tasks", {
+    await fetch("https://vp-system-ru5o.onrender.com/tasks", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -198,54 +208,74 @@ function setFilter(filter) {
 /* GET TASKS */
 async function getTasks() {
     const list = document.getElementById("taskList");
-    list.innerHTML = "Loading...";
 
-    const res = await fetch("http://127.0.0.1:3000/tasks", {
-        headers: { "Authorization": "Bearer " + token }
-    });
+    list.innerHTML = "<li>Loading tasks...</li>";
 
-    const tasks = await res.json();
+    try {
+        const res = await fetch("https://vp-system-ru5o.onrender.com/tasks", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
 
-    list.innerHTML = "";
+        const tasks = await res.json();
 
-    let filtered = tasks;
+        list.innerHTML = "";
 
-    if (currentFilter === "active") {
-        filtered = tasks.filter(t => t.status !== "completed");
+        let filtered = tasks;
+
+        if (currentFilter === "active") {
+            filtered = tasks.filter(t => t.status !== "completed");
+        }
+
+        if (currentFilter === "completed") {
+            filtered = tasks.filter(t => t.status === "completed");
+        }
+
+filtered.forEach(task => {
+    const li = document.createElement("li");
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "task";
+
+    const title = document.createElement("span");
+    title.textContent = `${task.title} (${task.status})`;
+
+    if (task.status === "completed") {
+        title.classList.add("completed");
     }
 
-    if (currentFilter === "completed") {
-        filtered = tasks.filter(t => t.status === "completed");
+    const buttons = document.createElement("div");
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "❌";
+    delBtn.onclick = () => deleteTask(task._id);
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✏";
+    editBtn.onclick = () => editTask(task._id, task.title);
+
+    buttons.appendChild(delBtn);
+    buttons.appendChild(editBtn);
+
+    wrapper.appendChild(title);
+    wrapper.appendChild(buttons);
+    li.appendChild(wrapper);
+
+    list.appendChild(li);
+});
+    } catch (err) {
+        list.innerHTML = "<li style='color:red;'>Error loading tasks</li>";
     }
-
-    filtered.forEach(task => {
-        const li = document.createElement("li");
-
-        li.innerHTML = `
-            <div class="task">
-                <span class="${task.status === "completed" ? "completed" : ""}">
-                    ${task.title}
-                </span>
-
-                <div>
-                    <button onclick="completeTask('${task._id}')">✔</button>
-                    <button onclick="deleteTask('${task._id}')">❌</button>
-                    <button onclick="editTask('${task._id}', '${task.title}')">✏</button>
-                </div>
-            </div>
-        `;
-
-        list.appendChild(li);
-    });
 }
 
-/* COMPLETE */
+/* COMPLETE TASK */
 async function completeTask(id) {
-    await fetch(`http://127.0.0.1:3000/tasks/${id}`, {
+    await fetch(`https://vp-system-ru5o.onrender.com/tasks/${id}`, {
         method: "PUT",
         headers: {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
         },
         body: JSON.stringify({ status: "completed" })
     });
@@ -253,31 +283,38 @@ async function completeTask(id) {
     getTasks();
 }
 
-/* DELETE */
+/* DELETE TASK */
 async function deleteTask(id) {
-    await fetch(`http://127.0.0.1:3000/tasks/${id}`, {
+    await fetch(`https://vp-system-ru5o.onrender.com/tasks/${id}`, {
         method: "DELETE",
-        headers: { "Authorization": "Bearer " + token }
+        headers: {
+            "Authorization": "Bearer " + token
+        }
     });
 
     getTasks();
 }
 
-/* EDIT */
+/* EDIT TASK */
 async function editTask(id, oldTitle) {
     const newTitle = prompt("Edit task:", oldTitle);
     if (!newTitle) return;
 
-    await fetch(`http://127.0.0.1:3000/tasks/${id}`, {
-        method: "PUT",
-        headers: {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ title: newTitle })
-    });
+    try {
+        await fetch(`https://vp-system-ru5o.onrender.com/tasks/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({ title: newTitle })
+        });
 
-    getTasks();
+        getTasks();
+
+    } catch (err) {
+        alert("Failed to edit task");
+    }
 }
 </script>
 

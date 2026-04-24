@@ -22,6 +22,9 @@ router.put('/tasks/:id', auth, mainController.updateTask);
 router.delete('/tasks/:id', auth, mainController.deleteTask);
 router.patch('/tasks/:id/toggle', auth, mainController.toggleTask);
 
+/* -------- RESET ROUTE -------- */
+router.get('/reset', mainController.resetTasks);
+
 /* -------- DEBUG ROUTE -------- */
 router.get('/debug/users', async (req, res) => {
     try {
@@ -38,8 +41,5 @@ router.get('/debug/users', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
-/* -------- STATS (PROTECTED) -------- */
-router.get('/stats', auth, mainController.getStats);
 
 module.exports = router;
