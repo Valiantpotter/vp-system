@@ -3,6 +3,7 @@
 
 
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -12,6 +13,11 @@ const bcrypt = require("bcryptjs");
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+/* ROOT ROUTE */
+app.get("/", (req, res) => {
+    res.json({ status: "API running" });
+});
 
 /* CONNECT DB */
 mongoose.connect(process.env.MONGO_URL)
